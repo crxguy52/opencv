@@ -25,52 +25,66 @@ while(1):
     #blur the frame to get rid of noise. the kernel should be ODD
     frame = cv2.GaussianBlur(frame,(21,21),0)
     
-
     # Convert BGR to HSV
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    # define range of blue color in HSV
-    
+    # define range of color in HSV
     lower_limit = np.array([0,150,150])
     upper_limit = np.array([10,255,255])
 
-    # Threshold the HSV image to get only blue colors
+    # Threshold the HSV image to get only the thresholded colors
+    # mask is a binary image
     mask = cv2.inRange(hsv, lower_limit, upper_limit)
 
+    # The dimensions of the kernel must be odd!
     kernel = np.ones((3,3),np.uint8)
     kernel_lg = np.ones((15,15),np.uint8)
-    #erosion followed by dilation is called an opening
+    
+    # erosion followed by dilation is called an opening
     #http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_morphological_ops/py_morphological_ops.html
     #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     
-    #erode the mask to get rid of noise
+    # erode the mask to get rid of noise
     mask = cv2.erode(mask,kernel,iterations = 1)
 
-    #dialate it back to regain some lost area
+    # dialate it back to regain some lost area
     mask = cv2.dilate(mask,kernel_lg,iterations = 1)    
-
-    framegray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # Bitwise-AND mask and original image
-    res = cv2.bitwise_and(framegray,framegray, mask= mask)
+    # Bitwise-AND the mask and grayscale image so we end up with our areas of interest and black everywhere else
+    result = cv2.bitwise_and(frame,frame, mask= mask)
     
-    ret,thresh = cv2.threshold(res,30,255,0)
+    # threshold the image to convert our image with areas of interest a binary image
+    # note that this only works on black and white images!
+    #
+    # this isn't necessary for this example, since our mask is already a binary image
+    #ret,thresh = cv2.threshold(result,30,255,0)
+    
+    thresh = mask
     im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     
+    # define a minimum area for a contour - if it's below this, ignore it 
     min_area = 1000
     cont_filtered = []    
     
+    # filter out all contours below a min_area
     for cont in contours:
         if cv2.contourArea(cont) > min_area:
             cont_filtered.append(cont)
             #print(cv2.contourArea(cont))
 
+    # just take the first contour (we're assuming we only have one here)
+    # the try\except is necessary, since the program will crash if it tries to access 
+    # contours[0] and there aren't any
     try:
         cnt = cont_filtered[0]
+        
+        # draw the rectangle surrounding the filtered contour
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
         cv2.drawContours(frame,[box],0,(0,0,255),2)
+        
+        # this would draw all the contours on the image, not just the ones from cont_filtered
         #cv2.drawContours(frame, cont_filtered, -1, (0,255,0), 3)
 
         M = cv2.moments(cnt)
@@ -82,17 +96,13 @@ while(1):
     except:
         print('no contours')
 
-    
-    #rect = cv2.minAreaRect(cnt)
-    #box = cv2.boxPoints(rect)
-    #box = np.int0(box)
-    #cv2.drawContours(thresh,[box],0,(0,0,255),2)    
-
+        
     cv2.imshow('frame',frame)
+    #cv2.imshow('mask', mask)
     #cv2.imshow('thresh',thresh)
-    #cv2.imshow('imgray',imgray)
     #cv2.imshow('im2', im2)
-    cv2.imshow('res',res)
+    cv2.imshow('result', result)
+    
     k = cv2.waitKey(5) & 0xFF
     if k == ord('q'):
         break
