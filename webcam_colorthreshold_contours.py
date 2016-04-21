@@ -84,13 +84,20 @@ while(1):
         box = np.int0(box)
         cv2.drawContours(frame,[box],0,(0,0,255),2)
         
+        rows,cols = thresh.shape[:2]
+        [vx,vy,x,y] = cv2.fitLine(cnt, cv2.DIST_L2,0,0.01,0.01)
+        lefty = int((-x*vy/vx) + y)
+        righty = int(((cols-x)*vy/vx)+y)
+        cv2.line(frame,(cols-1,righty),(0,lefty),(0,255,0),2)        
+        
         # this would draw all the contours on the image, not just the ones from cont_filtered
         #cv2.drawContours(frame, cont_filtered, -1, (0,255,0), 3)
 
         M = cv2.moments(cnt)
         cx = int(M['m10']/M['m00'])
         cy = int(M['m01']/M['m00'])
-        print('x= ', cx, '  y= ', cy)
+        (x,y),(MA,ma),angle = cv2.fitEllipse(cnt)
+        print('x= ', cx, '  y= ', cy, ' angle = ', round(rect[2],2))
         #print(contours)
         #print('there are contours')
     except:
@@ -113,7 +120,6 @@ while(1):
     n += 1
     freq = round(1/(deltatsum/n), 2)
     #print('Updating at ' + str(freq) + ' FPS\r', end='')
-
 
 # When everything done, release the capture
 cap.release()
